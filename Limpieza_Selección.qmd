@@ -1,0 +1,160 @@
+---
+format:
+   html:
+     toc: true
+     html-math-method: katex
+     embed-resources: true
+     self-contained-math: true
+     df-print: kable
+---
+
+# Limpieza de datos y recolección de variables relevantes.
+
+```{r}
+library(readr)
+library(dplyr)
+library(tidyr)
+```
+
+#### Query 1 - Vértiz
+
+Del archivo tvivienda.csv:
+
+p1_1 - Cantidad de personas en una vivienda.
+
+Del archivo tviaje.csv:
+
+p5_14_05 - Usó el Metro.
+
+p5_14_08 - Usó el Autobús.
+
+#### Query 2 - Sancho
+
+tviaje.csv
+
+p5_6 - Origen del viaje.
+
+p5_11a - Destino del viaje.
+
+p5_14_01 Utilizó automóvil como medio de transporte
+
+p5_9_1, p5_9_2, p5_10_1, p5_10_2 Duración del viaje
+
+Query 3 - August
+
+tviaje.csv
+
+sexo -
+
+p5_14_02 - Utilizó o no utilizó colectivo o micro
+
+estrato -
+
+Query 4 - Govea
+
+tsdem.csv
+
+niv Nivel de estudios
+
+ttransporte.csv
+
+p5_14 Transporte Público
+
+tviajes.csv
+
+p5_11_a destino
+
+## Seleccionamos las variables relevantes para nuestro análisis de cada tabla
+
+```{r}
+cols_viv <- c("id_viv", "p1_1")                                   # tvivienda
+cols_hog <- c("id_hog", "id_viv")                                 # thogar
+cols_sdem <- c("id_soc", "id_hog", "n_ren", "sexo", "niv")        # tsdem
+cols_vje <- c(                                                     # tviaje
+  "id_via", "id_soc", "p5_6", "p5_11a", "p5_11_a",
+  "p5_14_01", "p5_14_05", "p5_14_08",
+  "p5_9_1", "p5_9_2", "p5_10_1", "p5_10_2",
+  "estrato"
+)
+cols_tra <- c("id_via", "p5_14", "p5_3", "n_via") # ttransporte
+```
+
+Renombramos las variables a algo más legible
+
+```{r}
+viv <- read_csv("tvivienda.csv", col_types = cols(), col_select = any_of(cols_viv)) %>%
+  rename(n_personas_vivienda = p1_1)
+
+hog <- read_csv("thogar.csv", col_types = cols(), col_select = any_of(cols_hog))
+
+sdem <- read_csv("tsdem.csv", col_types = cols(), col_select = any_of(cols_sdem)) %>%
+  rename(nivel_estudios = niv)
+
+vje <- read_csv("tviaje.csv", col_types = cols(), col_select = any_of(cols_vje)) %>%
+  mutate(
+    # origen / destino (acepta p5_11a o p5_11_a)
+    origen  = .data[["p5_6"]],
+    destino = coalesce(.data[["p5_11a"]], .data[["p5_11a"]]),
+    uso_auto    = .data[["p5_14_01"]],
+    uso_metro   = .data[["p5_14_05"]],
+    uso_autobus = .data[["p5_14_08"]],
+    dur_horas_i = .data[["p5_9_1"]],
+    dur_min_i   = .data[["p5_9_2"]],
+    dur_horas_v = .data[["p5_10_1"]],
+    dur_min_v   = .data[["p5_10_2"]]
+  ) %>%
+  select(id_via, id_soc, origen, destino, uso_auto, uso_metro, uso_autobus,
+         dur_horas_i, dur_min_i, dur_horas_v, dur_min_v, estrato)
+
+tra <- read_csv("ttransporte.csv", col_types = cols(), col_select = any_of(cols_tra)) %>%
+  rename(transporte_publico = p5_14)
+```
+
+Dado el modelo relacional proporcionado por INEGI: ![Modelo relacional](img/modelo_relacional_inegi.png)
+
+Relizamos una unión con Left Join:
+
+```{r}
+df <- vje %>%
+  left_join(sdem, by = "id_soc") %>%                 
+  left_join(hog,  by = "id_hog") %>%                 
+  left_join(viv,  by = "id_viv") %>%                 
+  left_join(tra,  by = "id_via")                     
+#Partimos desde viaje porque será el más usado en nuestro análisis.
+```
+
+Y finalmente seleccionamos solo las variables necesarias ya definidas antes:
+
+```{r}
+df_final <- df %>%
+  select(
+    id_via, id_soc, id_hog, id_viv,
+    # Query 1 - Vertiz
+    n_personas_vivienda, uso_metro, uso_autobus,
+    # Query 2 - Sanchez
+    origen, destino, uso_auto, dur_horas_i, dur_min_i, dur_horas_v, dur_min_v,
+    # Query 3 - Augusto
+    sexo, estrato,
+    # Query 4 - Govea
+    nivel_estudios, transporte_publico
+  )
+glimpse(df_final)
+
+readr::write_csv(df_final, "df_final_r.csv")
+```
+
+Se hace el cálculo de la duración del viaje con dur_horas_i, dur_horas_v y minutos:
+
+```{python}
+df = pd.read_csv("df_final_r.csv")
+
+df["duracion_viaje_min"] = (df["dur_horas_v"]*60 + df["dur_min_v"]) -(df["dur_horas_i"]*60 + df["dur_min_i"])
+
+df = df.drop(columns=["dur_horas_i","dur_min_i","dur_horas_v","dur_min_v"])
+df.to_csv("df_final_py.csv", index=False, encoding="utf-8")
+```
+
+```{r}
+data <- readr::read_csv("df_final_py.csv")
+glimpse(data)
+```
