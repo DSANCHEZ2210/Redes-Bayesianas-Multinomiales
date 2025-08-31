@@ -8,6 +8,13 @@ format:
      df-print: kable
 ---
 
+```{r}
+##install.packages("readr")
+##install.packages("dplyr")
+##install.packages("tidyr")
+```
+
+
 # Limpieza de datos y recolección de variables relevantes.
 
 ```{r}
@@ -40,7 +47,7 @@ p5_14_01 Utilizó automóvil como medio de transporte
 
 p5_9_1, p5_9_2, p5_10_1, p5_10_2 Duración del viaje
 
-Query 3 - August
+####Query 3 - August
 
 tviaje.csv
 
@@ -50,7 +57,7 @@ p5_14_02 - Utilizó o no utilizó colectivo o micro
 
 estrato -
 
-Query 4 - Govea
+#### Query 4 - Govea
 
 tsdem.csv
 
@@ -146,6 +153,7 @@ readr::write_csv(df_final, "df_final_r.csv")
 Se hace el cálculo de la duración del viaje con dur_horas_i, dur_horas_v y minutos:
 
 ```{python}
+import pandas as pd
 df = pd.read_csv("df_final_r.csv")
 
 df["duracion_viaje_min"] = (df["dur_horas_v"]*60 + df["dur_min_v"]) -(df["dur_horas_i"]*60 + df["dur_min_i"])
