@@ -255,3 +255,98 @@ sapply(data[, c("NP","O","D","S","E","NE","T","DV")], class)
 
 ```
 
+
+# Comparacion de DAG
+Ahora teniendo las 3 DAGs propuestas veremos cual es la mejor DAG con la funcion de BIC. En la libreria bnlearn entre mayor mejor es la DAG.
+
+Primero debemos de hacer nuestras variables factor con este codigo. Ya que la libreria bn learn no acepta integer y todas nuestras variables son integer.
+
+```{r}
+data[] <- lapply(data, factor) #columnas a factor
+str(data)
+
+
+```
+
+El score de la DAG1 usando BIC es de:
+```{r}
+score(dag1, data = data, type = "bic")
+
+
+```
+
+El score de la DAG2 usando BIC es de:
+```{r}
+score(dag2, data = data, type = "bic")
+```
+
+El score de la DAG2 usando BIC es de:
+```{r}
+score(dag3, data = data, type = "bic")
+```
+
+Aquí vemos que la mejor DAG fue la segunda. Pero utilizaremos un algoritmo llamado Hill Climbing para que nos diga con nuestros datos cual es la mejor DAG.
+
+## Mejor DAG: Hill Climbing
+
+```{r}
+best_dag = hc(data)
+```
+
+```{r}
+modelstring(best_dag)
+```
+Aqui lo comprobaremos score utilizando el BIC
+
+```{r}
+score(best_dag, data = data, type = "bic")
+```
+
+Claramente se ve que hay una gran mejora en nuestro score. 
+
+Aqui la veremos graficamente: 
+
+```{r}
+graphviz.plot(best_dag, shape = "ellipse")
+```
+
+## Queries
+
+Ya para responder nuestra queries utilizaremos lal ibreria bnlearn, usamos el bn.fit para que me ajuste los parametros a nuestra red bayesiana que va a ser la best_dag ya que esta tiene mejor score.
+
+```{r}
+bn = bn.fit(best_dag, data = data)
+```
+
+Query 1:
+
+¿Cuál es la probabilidad de que una persona que vive en una vivienda en la que habitan de 2 a 5 personas, use de transporte público el metro o autobús como principal medio de viaje?
+
+Lo que hace el cpquery es que hace un muestreo de Monte Carlo.
+Ahora en el evento es lo que queremos sacar la probabilidad dado a la evidencia. Y la evidencia es lo que ya sabemos. Entonces con este codigo vamos a meter el evento y la evidencia. Nuestra n es de 10^6, ya que es el integer las grande. 
+```{r}
+cpquery(bn, event = (T=="5" | T == "8"), evidence = ((NP == "2")|(NP == "3")|(NP == "4")|(NP == "5")) , n = 10^6)
+```
+
+
+Query 2:¿Cuál es la probabilidad de que el viaje del hogar al trabajo dure más de 60 minutos si la persona viaja en coche?
+
+
+```{r}
+cpquery(bn, event = (O =="2" & D == "3" & DV == "1"), evidence = (T== "1") , n = 10^6)
+```
+
+
+Query 3: ¿Cuál es la probabilidad de que una mujer, use el colectivo/micro dado que es de estrato alto?
+```{r}
+cpquery(bn, event = (S =="1" & T == "2" ), evidence = (E== "4") , n = 10^6)
+```
+
+Query 4: ¿Cuál es la probabilidad de que una persona con Licenciatura, Maestría o Doctorado utilice transporte público como medio principal de viaje para ir al trabajo?
+
+```{r}
+cpquery(bn, event = (T=="2" | T == "5" | T == "6" | T== "8" | T== "10" | T == "11" | T == "12" | T== 13), evidence = ((NE == "8")|(NE == "9")) , n = 10^6)
+
+```
+
+
