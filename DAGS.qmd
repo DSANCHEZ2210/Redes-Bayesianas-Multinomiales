@@ -1,0 +1,257 @@
+---
+format:
+   html:
+     toc: true
+     html-math-method: katex
+     embed-resources: true
+     self-contained-math: true
+     df-print: kable
+---
+
+# Insatalamos la libreria bnlearn esto porque  incluye varios algoritmos para la estructura de redes bayesianas con variables discretas o continuas
+
+```{r}
+##install.packages("bnlearn")
+##install.packages("dplyr")
+```
+#La mandamos a llamar
+
+```{r}
+library("bnlearn")
+
+```
+
+# Leemos nuestros datos finales (despues de limpiarlos)
+
+```{r}
+data = read.csv("df_final_py.csv", stringsAsFactors = TRUE)
+head(data)
+```
+
+Llamamos la libreria dplyr esto para dropear algunas columnas. Vamos a dropear las columnas uso_metro, uso_autobus y uso_auto. Esto porque ya tenemos la columnas de transporte_publico. El cual contiene si se fue en auto, autobus, metro, etc. 
+```{r}
+library(dplyr)
+```
+
+
+```{r}
+data <- data %>%
+  select(-uso_autobus, -uso_metro, -uso_auto)
+```
+
+Tambien dropearemos los id ya que no lo necesitamos. 
+
+```{r}
+data <- data %>%
+  select(-id_via, -id_soc, -id_hog, -id_viv )
+
+
+```
+
+
+```{r}
+names(data)
+```
+
+ya tenemos nuestros datos bien como se puede ver a continuacion
+
+```{r}
+head(data)
+```
+
+Aqui cambiamos el nombre de nuestras variables por una letra o 2 letras, esto para facilitar nuestra DAG. 
+```{r}
+names(data) <- c("NP", "O","D", "S","E", "NE", "T", "DV")
+```
+
+Nombre de las Variables:
+NP = Numero de personas en la vivienda
+O = Origen
+D = Destino
+S = Sexo
+E = Estrato
+NE = Nivel de Estudios 
+T =  Transporte publico  (Tambien hay transporte no publico pero es el nombre de la variable)
+DV = Duracion de Viaje en Minutos
+
+```{r}
+head(data)
+```
+
+Aqui vamos a crear una nueva columna que la vamos a poner DV60, esto para discretizar la variable. Esto lo utilizaremos mas adelante para la query 3:
+
+```{r}
+data$DV60 <- factor(ifelse(data$DV > 60, "1", "0"), levels = c("0","1"))
+```
+
+Verificamos si se hizo: 
+```{r}
+head(data)
+```
+
+Ahora dropearemos CV60 esto porque no la utilizaremos, utilizaremos la DV60 a la cual ahora la renombraremos DV. Entonces la nueva DV sera la DV60. 
+
+```{r}
+data <- data %>%
+  select(-DV )
+```
+
+Lo verificamos 
+```{r}
+head(data)
+```
+
+Le cambiamos el nombre de DV60 a DV:
+```{r}
+names(data) <- c("NP", "O","D", "S","E", "NE", "T", "DV")
+```
+
+Lo volvemos a verificar:
+
+```{r}
+head(data)
+```
+
+
+## Propuestas de DAGs
+Llamamos la libreria Rgraphviz esto para verlo graficamente 
+```{r}
+##install.packages("BiocManager")
+##BiocManager::install("Rgraphviz")
+```
+1) Primera DAG propuesta
+
+creamos los nodos
+
+```{r}
+dag1 = empty.graph(nodes = c("NP", "O", "D", "S", "E", "NE", "T", "DV"))
+```
+
+Creamos la matriz de relaciones 
+
+```{r}
+arc_set = matrix(c("S", "NE",
+                   "E", "NE",
+                   "E", "T",
+                   "E", "NP",
+                   "T", "D",
+                   "D", "O",
+                   "D", "DV",
+                   "O", "DV"), byrow = TRUE, ncol = 2,
+                 dimnames = list(NULL, c("from", "to")))
+
+```
+
+Aqui lo podemos ver los nodos padres son los que estan en la columan de from y los nodos hijos en la columna de to. 
+
+```{r}
+arc_set
+```
+
+```{r}
+arcs(dag1) = arc_set
+```
+
+Aqui vamos a ver la distribucion global de la DAG1 
+
+```{r}
+dag1
+```
+Y aqui vamos a ver la DAG1 graficamente
+
+```{r}
+graphviz.plot(dag1, shape = "ellipse")
+```
+
+2) DAG2 Propuesta
+
+Cramos los nodos 
+
+```{r}
+dag2 = empty.graph(nodes = c("NP", "O", "D", "S", "E", "NE", "T", "DV"))
+```
+
+Creamos las relaciones
+
+```{r}
+arc_set1 = matrix(c("S", "NE",
+                    "S", "T",
+                   "E", "NE",
+                   "E", "T",
+                   "E", "NP",
+                   "T", "D",
+                   "D", "O",
+                   "D", "DV",
+                   "O", "DV"), byrow = TRUE, ncol = 2,
+                 dimnames = list(NULL, c("from", "to")))
+```
+
+
+```{r}
+arc_set1
+```
+
+
+```{r}
+arcs(dag2) = arc_set1
+```
+
+
+```{r}
+dag2
+```
+
+```{r}
+graphviz.plot(dag2, shape = "ellipse")
+```
+
+
+3) DAG 3 Propuesta
+
+Creamos los nodos
+
+```{r}
+dag3 = empty.graph(nodes = c("NP", "O", "D", "S", "E", "NE", "T", "DV"))
+```
+
+Creamos la matriz de realciones
+
+```{r}
+arc_set3 = matrix(c("S", "NE",
+                   "E", "NE",
+                   "E", "T",
+                   "E", "NP",
+                   "E", "D",
+                   "NP", "O",
+                   "T", "D",
+                   "D", "O",
+                   "D", "DV",
+                   "O", "DV"), byrow = TRUE, ncol = 2,
+                 dimnames = list(NULL, c("from", "to")))
+```
+
+Aqui vemoa las realciones de from a to
+
+```{r}
+arc_set3
+```
+```{r}
+arcs(dag3) = arc_set3
+```
+
+
+```{r}
+dag3
+```
+
+```{r}
+graphviz.plot(dag3, shape = "ellipse")
+```
+
+```{r}
+sapply(data[, c("NP","O","D","S","E","NE","T","DV")], class)
+# Debe imprimir: factor para NP,O,D,S,E,NE,T y numeric para DV (opción B)
+# o factor para todas (opción A)
+
+```
+
