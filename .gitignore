@@ -2,3 +2,17 @@
 .Rhistory
 .RData
 .Ruserdata
+# Archivos generados por Quarto/LaTeX
+*.html
+*.log
+*.aux
+*.out
+*.toc
+*.md
+*.tex
+*_files/
+*.RDataTmp
+.DS_Store
+
+# Carpeta de entornos o virtualenv
+.venv/
